@@ -1,0 +1,63 @@
+# Load the DATA
+
+cl <- read.csv("ref.csv",stringsAsFactors = F)
+
+cl$response <- ifelse(cl$Refer == "Yes" ,1 , 0)
+
+# Logistic Regression Model
+
+clvmodel <- glm(response~R_VALUE+F_VALUE,family = quasibinomial(link = "logit"),data = cl)
+
+summary(clvmodel)$coefficient
+
+# Prediction In Probabilties
+
+cl$pred <- predict(clvmodel,cl[ ,c(2,3)],type = "response")
+
+# Contingency table (Cross tabulation)
+
+xtabs( ~ response+R_SCORE,data = cl)
+xtabs(~response+F_SCORE,data = cl)
+
+#load the libaray
+
+library("ROCR")
+
+# Prediction parameter
+ROCRPred <- prediction(cl$pred,cl$response)
+
+#Performance parameter (tpr and fpr)
+ROCRPref <- performance(ROCRPred,"tpr","fpr")
+
+#  Plot the ROC curve
+plot(ROCRPref,colorize=T , print.cutoffs.at = seq(0.1,by=0.1))
+
+#Performance Parameter (precision and recall)
+rp.curve <- performance(ROCRPred,"prec","rec")
+
+# plot ROC cureve
+plot(rp.curve,colorize=T , print.cutoffs.at = seq(0.1,by=0.1))
+
+#set the threshold point
+cl$presponse <- ifelse(cl$pred >= 0.58 , 1 , 0)
+table(actu_value = cl$response , predicted_value = cl$presponse)
+
+acc.matrix <- as.data.frame(xtabs(~response+presponse,data = cl))
+
+TN <- acc.matrix[ 1,3 ]
+FN <- acc.matrix[2,3]
+FP <- acc.matrix[3,3]
+TP <- acc.matrix[4,3]
+
+# Parameters to judge the model
+overall_accuracy <- ((TN+TP)/(TP+TN+FP+FN))
+overall_accuracy
+
+Recall <- (TP)/(TP+FN)
+Recall
+
+Precision <- (TP)/(TP+FP)
+Precision
+
+F_Score <- (2*(Recall*Precision))/(Recall+Precision)
+F_Score
